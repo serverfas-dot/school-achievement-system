@@ -25,7 +25,7 @@ interface YearGroup {
 
 export function PublicDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchBy, setSearchBy] = useState<'name' | 'index'>('name');
+  const [searchBy, setSearchBy] = useState<'name' | 'index'>('index');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [student, setStudent] = useState<Student | null>(null);
@@ -46,9 +46,9 @@ export function PublicDashboard() {
       const query = supabase.from('students').select('*');
 
       if (searchBy === 'name') {
-        query.ilike('student_name', `%${searchTerm}%`);
+        query.ilike('student_name', `%${searchTerm.trim()}%`);
       } else {
-        query.eq('index_number', searchTerm);
+        query.eq('index_number', searchTerm.trim());
       }
 
       const { data: studentData, error: studentError } = await query.limit(1).maybeSingle();
@@ -209,7 +209,7 @@ export function PublicDashboard() {
               </div>
             </div>
             <button
-              onClick={() => window.location.href = '?login=true'}
+              onClick={() => window.location.href = `${import.meta.env.BASE_URL}?login=true`}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md sm:absolute sm:right-0"
             >
               <LogIn className="w-5 h-5" />

@@ -16,7 +16,7 @@ export function Login() {
 
     try {
       await signIn(email, password);
-      window.location.href = '/';
+      window.location.href = import.meta.env.BASE_URL;
     } catch (err) {
       setError('Invalid email or password');
     } finally {
@@ -28,7 +28,7 @@ export function Login() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => window.location.href = import.meta.env.BASE_URL}
           className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 mb-4 transition"
         >
           <ArrowLeft className="w-5 h-5" />
