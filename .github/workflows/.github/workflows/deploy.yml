@@ -20,7 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_BASE_PATH: /${{ github.event.repository.name }}/
-
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +34,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare production configuration
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "Required Supabase repository secrets are missing."
+            exit 1
+          fi
+          REPOSITORY_NAME="${GITHUB_REPOSITORY#*/}"
+          printf 'VITE_BASE_PATH=/%s/\nVITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' "$REPOSITORY_NAME" "$VITE_SUPABASE_URL" "$VITE_SUPABASE_ANON_KEY" > .env.production
 
       - name: Build
         run: npm run build
@@ -48,7 +61,6 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
