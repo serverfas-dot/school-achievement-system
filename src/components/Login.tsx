@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogIn, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
@@ -36,9 +36,11 @@ export function Login() {
         </button>
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-              <LogIn className="w-8 h-8 text-white" />
-            </div>
+            <img
+              src="/png.png"
+              alt="Faafu Atoll School logo"
+              className="w-24 h-24 object-contain mx-auto mb-4"
+            />
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Faafu Atoll School
             </h1>

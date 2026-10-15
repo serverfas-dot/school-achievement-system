@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardCheck, LogOut, Calendar, CheckSquare, Eye } from 'lucide-react';
+import { LogOut, Calendar, CheckSquare, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Database } from '../lib/database.types';
@@ -204,7 +204,11 @@ export function TeacherDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <ClipboardCheck className="w-8 h-8 text-blue-600" />
+              <img
+                src="/png.png"
+                alt="Faafu Atoll School logo"
+                className="w-12 h-12 object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Teacher Dashboard</h1>
                 <p className="text-sm text-gray-600">{userDetails?.full_name}</p>

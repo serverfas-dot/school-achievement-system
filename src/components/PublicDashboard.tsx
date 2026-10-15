@@ -194,16 +194,23 @@ export function PublicDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
       <div className="bg-white shadow-md border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div className="text-center flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Faafu Atoll School
-              </h1>
-              <p className="text-lg text-gray-600">Student Achievement Public Portal</p>
+          <div className="relative flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex items-center gap-3 text-center">
+              <img
+                src="/png.png"
+                alt="Faafu Atoll School logo"
+                className="w-16 h-16 object-contain shrink-0"
+              />
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+                  Faafu Atoll School
+                </h1>
+                <p className="text-sm sm:text-lg text-gray-600">Student Achievement Public Portal</p>
+              </div>
             </div>
             <button
               onClick={() => window.location.href = '?login=true'}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md"
+              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md sm:absolute sm:right-0"
             >
               <LogIn className="w-5 h-5" />
               <span>Admin Login</span>

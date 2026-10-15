@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Shield, Users, Trash2, LogOut, Edit2, X } from 'lucide-react';
+import { UserPlus, Users, Trash2, LogOut, Edit2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../lib/database.types';
@@ -229,7 +229,11 @@ export function SuperAdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <Shield className="w-8 h-8 text-blue-600" />
+              <img
+                src="/png.png"
+                alt="Faafu Atoll School logo"
+                className="w-12 h-12 object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Super Admin Dashboard</h1>
                 <p className="text-sm text-gray-600">{userDetails?.full_name}</p>
