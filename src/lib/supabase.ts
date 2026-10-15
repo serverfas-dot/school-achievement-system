@@ -4,4 +4,9 @@ import type { Database } from './database.types';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase = createClient<Database>(
+  supabaseUrl || globalThis.location?.origin || 'http://localhost',
+  supabaseAnonKey || 'missing-supabase-anon-key'
+);
