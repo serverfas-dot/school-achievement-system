@@ -37,7 +37,7 @@ export function Login() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
             <img
-              src="/png.png"
+              src={`${import.meta.env.BASE_URL}png.png`}
               alt="Faafu Atoll School logo"
               className="w-24 h-24 object-contain mx-auto mb-4"
             />

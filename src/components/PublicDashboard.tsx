@@ -197,7 +197,7 @@ export function PublicDashboard() {
           <div className="relative flex flex-col sm:flex-row items-center justify-center gap-4">
             <div className="flex items-center gap-3 text-center">
               <img
-                src="/png.png"
+                src={`${import.meta.env.BASE_URL}png.png`}
                 alt="Faafu Atoll School logo"
                 className="w-16 h-16 object-contain shrink-0"
               />

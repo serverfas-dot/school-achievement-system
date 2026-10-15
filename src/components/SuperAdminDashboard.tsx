@@ -230,7 +230,7 @@ export function SuperAdminDashboard() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
               <img
-                src="/png.png"
+                src={`${import.meta.env.BASE_URL}png.png`}
                 alt="Faafu Atoll School logo"
                 className="w-12 h-12 object-contain"
               />
