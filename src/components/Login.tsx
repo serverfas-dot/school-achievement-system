@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -18,7 +19,14 @@ export function Login() {
       await signIn(email, password);
       window.location.href = import.meta.env.BASE_URL;
     } catch (err) {
-      setError('Invalid email or password');
+      const message = err instanceof Error ? err.message.toLowerCase() : '';
+      if (!isSupabaseConfigured) {
+        setError('The hosted sign-in service is not configured. Please redeploy after checking the GitHub repository secrets.');
+      } else if (message.includes('fetch') || message.includes('network')) {
+        setError('The hosted site cannot connect to the sign-in service. Please try again after the deployment finishes.');
+      } else {
+        setError('Invalid email or password');
+      }
     } finally {
       setLoading(false);
     }
