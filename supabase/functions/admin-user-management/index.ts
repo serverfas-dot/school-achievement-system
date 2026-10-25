@@ -114,18 +114,19 @@ Deno.serve(async (req: Request) => {
       return response({ error: "Invalid request" }, 400);
     }
 
-    if (body.targetUserId === callerData.user.id) {
-      return response({ error: "Use your own account settings to change this account" }, 400);
-    }
-
+    const isSelf = body.targetUserId === callerData.user.id;
     const { data: targetRoles, error: targetRoleError } = await adminClient
       .from("user_role_assignments")
       .select("role")
       .eq("user_id", body.targetUserId)
       .eq("is_active", true);
 
-    if (targetRoleError || !targetRoles?.some((item) => item.role === "admin" || item.role === "teacher")) {
-      return response({ error: "Only admin or teacher accounts can be changed here" }, 400);
+    const canUpdateTarget = isSelf
+      ? targetRoles?.some((item) => item.role === "super_admin")
+      : targetRoles?.some((item) => item.role === "admin" || item.role === "teacher");
+
+    if (targetRoleError || !canUpdateTarget) {
+      return response({ error: isSelf ? "Super-admin account not found" : "Only admin or teacher accounts can be changed here" }, 400);
     }
 
     const update: { email: string; email_confirm: boolean; password?: string } = {
