@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Users, Trash2, LogOut, Edit2, X } from 'lucide-react';
+import { UserPlus, Users, Trash2, LogOut, Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { UserRole } from '../lib/database.types';
@@ -85,11 +85,12 @@ export function SuperAdminDashboard() {
 
       if (authError) throw authError;
 
-      if (authData.user) {
+      const createdUser = authData.user;
+      if (createdUser) {
         const { error: roleError } = await supabase
           .from('user_roles')
           .insert({
-            id: authData.user.id,
+            id: createdUser.id,
             email: formData.email,
             full_name: formData.full_name,
             role: formData.roles[0],
@@ -99,7 +100,7 @@ export function SuperAdminDashboard() {
 
         const currentUser = await supabase.auth.getUser();
         const roleAssignments = formData.roles.map(role => ({
-          user_id: authData.user.id,
+          user_id: createdUser.id,
           role,
           assigned_by: currentUser.data.user?.id,
         }));

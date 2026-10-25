@@ -31,6 +31,7 @@ export interface Database {
           created_at?: string;
           created_by?: string | null;
         };
+        Relationships: [];
       };
       user_role_assignments: {
         Row: {
@@ -57,6 +58,7 @@ export interface Database {
           assigned_at?: string;
           is_active?: boolean;
         };
+        Relationships: [];
       };
       students: {
         Row: {
@@ -119,6 +121,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       activity_categories: {
         Row: {
@@ -145,6 +148,7 @@ export interface Database {
           is_active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       sub_activities: {
         Row: {
@@ -174,6 +178,7 @@ export interface Database {
           is_active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       student_achievements: {
         Row: {
@@ -215,6 +220,11 @@ export interface Database {
           recorded_year?: number;
           recorded_at?: string;
         };
+        Relationships: [
+          { foreignKeyName: 'student_achievements_student_id_fkey'; columns: ['student_id']; isOneToOne: false; referencedRelation: 'students'; referencedColumns: ['id'] },
+          { foreignKeyName: 'student_achievements_category_id_fkey'; columns: ['category_id']; isOneToOne: false; referencedRelation: 'activity_categories'; referencedColumns: ['id'] },
+          { foreignKeyName: 'student_achievements_sub_activity_id_fkey'; columns: ['sub_activity_id']; isOneToOne: false; referencedRelation: 'sub_activities'; referencedColumns: ['id'] },
+        ];
       };
       attendance_records: {
         Row: {
@@ -250,7 +260,13 @@ export interface Database {
           notes?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          { foreignKeyName: 'attendance_records_student_id_fkey'; columns: ['student_id']; isOneToOne: false; referencedRelation: 'students'; referencedColumns: ['id'] },
+          { foreignKeyName: 'attendance_records_sub_activity_id_fkey'; columns: ['sub_activity_id']; isOneToOne: false; referencedRelation: 'sub_activities'; referencedColumns: ['id'] },
+        ];
       };
     };
+    Views: {};
+    Functions: {};
   };
 }

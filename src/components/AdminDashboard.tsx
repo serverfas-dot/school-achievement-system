@@ -74,7 +74,6 @@ export function AdminDashboard() {
     position: '',
     profile_picture_url: '',
   });
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
 
   const [activityForm, setActivityForm] = useState({
@@ -246,7 +245,6 @@ export function AdminDashboard() {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -288,7 +286,6 @@ export function AdminDashboard() {
         position: '',
         profile_picture_url: '',
       });
-      setSelectedImage(null);
       setImagePreview('');
       setShowAddStudent(false);
       loadData();
@@ -354,7 +351,6 @@ export function AdminDashboard() {
         position: '',
         profile_picture_url: '',
       });
-      setSelectedImage(null);
       setImagePreview('');
       setEditingStudent(null);
       setShowAddStudent(false);
