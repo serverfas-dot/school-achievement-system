@@ -187,6 +187,7 @@ export interface Database {
           category_id: string;
           sub_activity_id: string;
           score: number;
+          winner_position: 1 | 2 | 3 | null;
           participation_status: ParticipationStatus;
           notes: string | null;
           recorded_by: string | null;
@@ -200,6 +201,7 @@ export interface Database {
           category_id: string;
           sub_activity_id: string;
           score?: number;
+          winner_position?: 1 | 2 | 3 | null;
           participation_status?: ParticipationStatus;
           notes?: string | null;
           recorded_by?: string | null;
@@ -213,6 +215,7 @@ export interface Database {
           category_id?: string;
           sub_activity_id?: string;
           score?: number;
+          winner_position?: 1 | 2 | 3 | null;
           participation_status?: ParticipationStatus;
           notes?: string | null;
           recorded_by?: string | null;

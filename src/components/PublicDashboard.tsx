@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Award, Calendar, TrendingUp, User, LogIn, Trophy, Star, Medal, Target } from 'lucide-react';
+import { Search, Award, Calendar, User, LogIn, Trophy, Star, Medal, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
@@ -9,7 +9,7 @@ type PublicStudent = Pick<Student, 'id' | 'student_name' | 'index_number' | 'gra
 interface AchievementEntry {
   id: string;
   activity_name: string;
-  score: number;
+  winner_position: 1 | 2 | 3 | null;
   participation_status: string;
   recorded_month: number;
   recorded_year: number;
@@ -70,7 +70,7 @@ export function PublicDashboard() {
         .from('student_achievements')
         .select(`
           id,
-          score,
+          winner_position,
           participation_status,
           notes,
           recorded_month,
@@ -116,7 +116,7 @@ export function PublicDashboard() {
         yearMap[year][categoryName].activities.push({
           id: achievement.id,
           activity_name: achievement.sub_activities?.activity_name || 'Unknown',
-          score: achievement.score,
+          winner_position: achievement.winner_position,
           participation_status: achievement.participation_status,
           recorded_month: achievement.recorded_month,
           recorded_year: achievement.recorded_year,
@@ -141,26 +141,12 @@ export function PublicDashboard() {
     }
   };
 
-  const calculateTotalScore = () => {
-    let total = 0;
-    yearGroups.forEach(yg => {
-      yg.categories.forEach(cat => {
-        cat.activities.forEach(act => {
-          if (act.participation_status === 'participated') {
-            total += act.score;
-          }
-        });
-      });
-    });
-    return total;
-  };
-
   const countAchievements = () => {
     let count = 0;
     yearGroups.forEach(yg => {
       yg.categories.forEach(cat => {
         cat.activities.forEach(act => {
-          if (act.participation_status === 'participated' && act.score > 0) count++;
+          if (act.winner_position) count++;
         });
       });
     });
@@ -186,8 +172,8 @@ export function PublicDashboard() {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const getStatusIcon = (status: string, score: number) => {
-    if (status === 'participated' && score > 0) return <Trophy className="w-5 h-5 text-amber-500" />;
+  const getStatusIcon = (status: string, winnerPosition: number | null) => {
+    if (status === 'participated' && winnerPosition) return <Trophy className="w-5 h-5 text-amber-500" />;
     if (status === 'participated') return <Medal className="w-5 h-5 text-blue-500" />;
     if (status === 'absent') return <Target className="w-5 h-5 text-red-400" />;
     return <Star className="w-5 h-5 text-yellow-500" />;
@@ -392,8 +378,8 @@ export function PublicDashboard() {
                   {yearGroups.length > 0 && (
                     <>
                       <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-lg">
-                        <TrendingUp className="w-5 h-5 text-blue-600" />
-                        <span className="text-blue-900 font-bold">Total Score: {calculateTotalScore()}</span>
+                        <Trophy className="w-5 h-5 text-blue-600" />
+                        <span className="text-blue-900 font-bold">Total Winners: {countAchievements()}</span>
                       </div>
                       <div className="flex items-center space-x-2 bg-amber-50 px-4 py-2 rounded-lg">
                         <Trophy className="w-5 h-5 text-amber-500" />
@@ -441,7 +427,7 @@ export function PublicDashboard() {
                                 <div key={actIndex} className="flex items-start justify-between p-4 hover:bg-blue-50/50 transition">
                                   <div className="flex items-start space-x-3 flex-1">
                                     <div className="mt-1">
-                                      {getStatusIcon(activity.participation_status, activity.score)}
+                                      {getStatusIcon(activity.participation_status, activity.winner_position)}
                                     </div>
                                     <div className="flex-1">
                                       <p className="font-semibold text-gray-900">{activity.activity_name}</p>
@@ -466,11 +452,13 @@ export function PublicDashboard() {
                                     }`}>
                                       {activity.participation_status}
                                     </span>
-                                    {activity.participation_status === 'participated' && (
+                                    {activity.winner_position ? (
                                       <span className="text-2xl font-bold text-blue-600">
-                                        {activity.score}
+                                        Winner {activity.winner_position}
                                       </span>
-                                    )}
+                                    ) : activity.participation_status === 'participated' ? (
+                                      <span className="text-sm font-medium text-blue-600">Participated</span>
+                                    ) : null}
                                   </div>
                                 </div>
                               ))}

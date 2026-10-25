@@ -24,35 +24,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadUserRole = async (userId: string) => {
-    const { data: userInfo, error: userError } = await supabase
-      .from('user_roles')
-      .select('full_name, email')
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      const { data: userInfo, error: userError } = await supabase
+        .from('user_roles')
+        .select('full_name, email')
+        .eq('id', userId)
+        .maybeSingle();
 
-    const { data: roleAssignments, error: rolesError } = await supabase
-      .from('user_role_assignments')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('is_active', true);
+      const { data: roleAssignments, error: rolesError } = await supabase
+        .from('user_role_assignments')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('is_active', true);
 
-    if (userInfo && !userError) {
-      setUserDetails({ full_name: userInfo.full_name, email: userInfo.email });
-    } else {
-      setUserDetails(null);
-    }
+      if (userInfo && !userError) {
+        setUserDetails({ full_name: userInfo.full_name, email: userInfo.email });
+      } else {
+        setUserDetails(null);
+      }
 
-    if (roleAssignments && !rolesError && roleAssignments.length > 0) {
-      const roles = roleAssignments.map(r => r.role);
-      setUserRoles(roles);
+      if (roleAssignments && !rolesError && roleAssignments.length > 0) {
+        const roles = roleAssignments.map(r => r.role);
+        setUserRoles(roles);
 
         const storedRole = localStorage.getItem('selectedRole') as UserRole;
-      if (storedRole && roles.includes(storedRole)) {
-        setUserRole(storedRole);
+        setUserRole(storedRole && roles.includes(storedRole) ? storedRole : roles[0]);
       } else {
-        setUserRole(roles[0]);
+        setUserRoles([]);
+        setUserRole(null);
       }
-    } else {
+    } catch (error) {
+      console.error('Failed to load user access:', error);
+      setUserDetails(null);
       setUserRoles([]);
       setUserRole(null);
     }
@@ -69,16 +72,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const applySession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
       if (!mounted) return;
 
+      setLoading(true);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await loadUserRole(session.user.id);
-      } else {
-        setUserRole(null);
-        setUserRoles([]);
-        setUserDetails(null);
+      try {
+        if (session?.user) {
+          await loadUserRole(session.user.id);
+        } else {
+          setUserRole(null);
+          setUserRoles([]);
+          setUserDetails(null);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-
-      if (mounted) setLoading(false);
     };
 
     const initialize = async () => {
@@ -93,8 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     void initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      void applySession(session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED') return;
+
+      window.setTimeout(() => {
+        void applySession(session);
+      }, 0);
     });
 
     return () => {

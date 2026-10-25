@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Users, Trash2, LogOut, Edit2, DatabaseBackup, Download, KeyRound, RefreshCw } from 'lucide-react';
+import { UserPlus, Users, Trash2, Edit2, DatabaseBackup, Download, KeyRound, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Database, UserRole } from '../lib/database.types';
@@ -15,7 +15,7 @@ interface UserRoleData {
 type Backup = Pick<Database['public']['Tables']['system_backups']['Row'], 'id' | 'backup_type' | 'file_name' | 'created_at'>;
 
 export function SuperAdminDashboard() {
-  const { signOut, userDetails, user } = useAuth();
+  const { userDetails, user } = useAuth();
   const [users, setUsers] = useState<UserRoleData[]>([]);
   const [loading, setLoading] = useState(true);
   const [backups, setBackups] = useState<Backup[]>([]);
@@ -321,14 +321,6 @@ export function SuperAdminDashboard() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -345,18 +337,14 @@ export function SuperAdminDashboard() {
                 <p className="text-sm text-gray-600">{userDetails?.full_name}</p>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Sign Out</span>
-            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading && (
+          <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">Loading records...</div>
+        )}
         {(error || success) && (
           <div className={`mb-6 px-4 py-3 rounded-lg ${error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
             {error || success}

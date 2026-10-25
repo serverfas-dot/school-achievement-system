@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Users, UserPlus, LogOut, Settings, Search, CreditCard as Edit, Trash2, Plus, Upload, Download, AlertTriangle, Award, Save, X } from 'lucide-react';
+import { Users, UserPlus, Settings, Search, CreditCard as Edit, Trash2, Plus, Upload, Download, AlertTriangle, Award, Save, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Database } from '../lib/database.types';
+import { StudentSearchSelect } from './StudentSearchSelect';
 
 type Student = Database['public']['Tables']['students']['Row'];
 type ActivityCategory = Database['public']['Tables']['activity_categories']['Row'];
 type SubActivity = Database['public']['Tables']['sub_activities']['Row'];
 type StudentAchievement = Database['public']['Tables']['student_achievements']['Row'];
 type ParticipationStatus = Database['public']['Tables']['student_achievements']['Row']['participation_status'];
+type WinnerPosition = 1 | 2 | 3 | null;
 
 interface AchievementWithDetails extends StudentAchievement {
   students: { student_name: string; index_number: string; grade: string } | null;
@@ -17,7 +19,7 @@ interface AchievementWithDetails extends StudentAchievement {
 }
 
 export function AdminDashboard() {
-  const { signOut, userDetails, user } = useAuth();
+  const { userDetails, user } = useAuth();
   const [activeTab, setActiveTab] = useState<'students' | 'activities' | 'achievements'>('students');
   const [students, setStudents] = useState<Student[]>([]);
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
@@ -31,7 +33,7 @@ export function AdminDashboard() {
     student_id: '',
     category_id: '',
     sub_activity_id: '',
-    score: 0,
+    winner_position: null as WinnerPosition,
     participation_status: 'participated' as ParticipationStatus,
     notes: '',
     recorded_month: new Date().getMonth() + 1,
@@ -43,7 +45,7 @@ export function AdminDashboard() {
     student_id: '',
     category_id: '',
     sub_activity_id: '',
-    score: 0,
+    winner_position: null as WinnerPosition,
     participation_status: 'participated' as ParticipationStatus,
     notes: '',
     recorded_month: new Date().getMonth() + 1,
@@ -55,6 +57,7 @@ export function AdminDashboard() {
   const [showAddActivity, setShowAddActivity] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [achievementsLoading, setAchievementsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -79,7 +82,6 @@ export function AdminDashboard() {
   const [activityForm, setActivityForm] = useState({
     activity_name: '',
     description: '',
-    max_score: 100,
   });
 
   const loadData = async () => {
@@ -99,7 +101,7 @@ export function AdminDashboard() {
   };
 
   const loadAchievements = async () => {
-    setLoading(true);
+    setAchievementsLoading(true);
     let query = supabase
       .from('student_achievements')
       .select(`
@@ -123,7 +125,7 @@ export function AdminDashboard() {
       }
       setAchievements(filtered);
     }
-    setLoading(false);
+    setAchievementsLoading(false);
   };
 
   const handleEditAchievement = (achievement: StudentAchievement) => {
@@ -132,7 +134,7 @@ export function AdminDashboard() {
       student_id: achievement.student_id,
       category_id: achievement.category_id,
       sub_activity_id: achievement.sub_activity_id,
-      score: achievement.score,
+      winner_position: achievement.winner_position,
       participation_status: achievement.participation_status,
       notes: achievement.notes || '',
       recorded_month: achievement.recorded_month,
@@ -154,7 +156,7 @@ export function AdminDashboard() {
           student_id: achievementForm.student_id,
           category_id: achievementForm.category_id,
           sub_activity_id: achievementForm.sub_activity_id,
-          score: achievementForm.score,
+          winner_position: achievementForm.winner_position,
           participation_status: achievementForm.participation_status,
           notes: achievementForm.notes || null,
           recorded_month: achievementForm.recorded_month,
@@ -210,7 +212,7 @@ export function AdminDashboard() {
           student_id: newAchievement.student_id,
           category_id: newAchievement.category_id,
           sub_activity_id: newAchievement.sub_activity_id,
-          score: newAchievement.score,
+          winner_position: newAchievement.winner_position,
           participation_status: newAchievement.participation_status,
           notes: newAchievement.notes || null,
           recorded_by: user?.id,
@@ -225,7 +227,7 @@ export function AdminDashboard() {
         student_id: '',
         category_id: '',
         sub_activity_id: '',
-        score: 0,
+        winner_position: null,
         participation_status: 'participated',
         notes: '',
         recorded_month: new Date().getMonth() + 1,
@@ -239,7 +241,9 @@ export function AdminDashboard() {
   };
 
   useEffect(() => {
-    loadData();
+    loadData().then(() => {
+      loadAchievements();
+    });
   }, []);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -711,7 +715,7 @@ export function AdminDashboard() {
         setSuccess('Sub-activity added successfully!');
       }
 
-      setActivityForm({ activity_name: '', description: '', max_score: 100 });
+      setActivityForm({ activity_name: '', description: '' });
       setEditingActivity(null);
       setSelectedCategory('');
       setShowAddActivity(false);
@@ -727,7 +731,6 @@ export function AdminDashboard() {
     setActivityForm({
       activity_name: activity.activity_name,
       description: activity.description || '',
-      max_score: activity.max_score,
     });
     setShowAddActivity(true);
   };
@@ -756,14 +759,6 @@ export function AdminDashboard() {
     student.grade.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -780,13 +775,6 @@ export function AdminDashboard() {
                 <p className="text-sm text-gray-600">{userDetails?.full_name}</p>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Sign Out</span>
-            </button>
           </div>
 
           <div className="flex space-x-1 border-b">
@@ -831,6 +819,9 @@ export function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading && (
+          <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">Loading records...</div>
+        )}
         {(error || success) && (
           <div className={`mb-6 px-4 py-3 rounded-lg ${error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
             {error || success}
@@ -1142,7 +1133,7 @@ export function AdminDashboard() {
               <button
                 onClick={() => {
                   setEditingActivity(null);
-                  setActivityForm({ activity_name: '', description: '', max_score: 100 });
+                  setActivityForm({ activity_name: '', description: '' });
                   setSelectedCategory('');
                   setShowAddActivity(!showAddActivity);
                 }}
@@ -1182,14 +1173,7 @@ export function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Score</label>
-                    <input
-                      type="number"
-                      value={activityForm.max_score}
-                      onChange={(e) => setActivityForm({ ...activityForm, max_score: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      required
-                    />
+
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -1213,7 +1197,7 @@ export function AdminDashboard() {
                     onClick={() => {
                       setShowAddActivity(false);
                       setEditingActivity(null);
-                      setActivityForm({ activity_name: '', description: '', max_score: 100 });
+                      setActivityForm({ activity_name: '', description: '' });
                       setSelectedCategory('');
                     }}
                     className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
@@ -1238,7 +1222,6 @@ export function AdminDashboard() {
                             {sub.description && (
                               <p className="text-sm text-gray-600">{sub.description}</p>
                             )}
-                            <p className="text-xs text-gray-500 mt-1">Max Score: {sub.max_score}</p>
                           </div>
                           <div className="flex space-x-2">
                             <button
@@ -1336,17 +1319,12 @@ export function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                      <select
+                      <StudentSearchSelect
+                        students={students}
                         value={newAchievement.student_id}
-                        onChange={(e) => setNewAchievement({ ...newAchievement, student_id: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        onChange={(id) => setNewAchievement({ ...newAchievement, student_id: id })}
                         required
-                      >
-                        <option value="">Select Student</option>
-                        {students.map((s) => (
-                          <option key={s.id} value={s.id}>{s.student_name} ({s.index_number}) - {s.grade}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -1378,13 +1356,17 @@ export function AdminDashboard() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Score</label>
-                      <input
-                        type="number"
-                        value={newAchievement.score}
-                        onChange={(e) => setNewAchievement({ ...newAchievement, score: parseInt(e.target.value) || 0 })}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Winner Position</label>
+                      <select
+                        value={newAchievement.winner_position ?? ''}
+                        onChange={(e) => setNewAchievement({ ...newAchievement, winner_position: e.target.value ? Number(e.target.value) as 1 | 2 | 3 : null })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                      />
+                      >
+                        <option value="">Participation only</option>
+                        <option value="1">Winner 1</option>
+                        <option value="2">Winner 2</option>
+                        <option value="3">Winner 3</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Participation Status</label>
@@ -1446,7 +1428,7 @@ export function AdminDashboard() {
                 </form>
               )}
 
-              {loading ? (
+              {achievementsLoading ? (
                 <p className="text-gray-500 text-center py-8">Loading achievements...</p>
               ) : achievements.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
@@ -1462,7 +1444,7 @@ export function AdminDashboard() {
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Category</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Sub-Activity</th>
-                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Score</th>
+                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Winner</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Month/Year</th>
                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Notes</th>
@@ -1476,7 +1458,7 @@ export function AdminDashboard() {
                           <td className="px-4 py-3 text-sm text-gray-600">{a.students?.grade || '-'}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{a.activity_categories?.category_name || '-'}</td>
                           <td className="px-4 py-3 text-sm text-gray-600">{a.sub_activities?.activity_name || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900 font-medium">{a.score}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 font-medium">{a.winner_position ? `Winner ${a.winner_position}` : 'Participation'}</td>
                           <td className="px-4 py-3">
                             <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
                               a.participation_status === 'participated' ? 'bg-green-50 text-green-700' :
@@ -1521,17 +1503,12 @@ export function AdminDashboard() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Student</label>
-                        <select
+                        <StudentSearchSelect
+                          students={students}
                           value={achievementForm.student_id}
-                          onChange={(e) => setAchievementForm({ ...achievementForm, student_id: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                          onChange={(id) => setAchievementForm({ ...achievementForm, student_id: id })}
                           required
-                        >
-                          <option value="">Select Student</option>
-                          {students.map((s) => (
-                            <option key={s.id} value={s.id}>{s.student_name} ({s.index_number}) - {s.grade}</option>
-                          ))}
-                        </select>
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -1563,13 +1540,17 @@ export function AdminDashboard() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Score</label>
-                        <input
-                          type="number"
-                          value={achievementForm.score}
-                          onChange={(e) => setAchievementForm({ ...achievementForm, score: parseInt(e.target.value) || 0 })}
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Winner Position</label>
+                        <select
+                          value={achievementForm.winner_position ?? ''}
+                          onChange={(e) => setAchievementForm({ ...achievementForm, winner_position: e.target.value ? Number(e.target.value) as 1 | 2 | 3 : null })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                        />
+                        >
+                          <option value="">Participation only</option>
+                          <option value="1">Winner 1</option>
+                          <option value="2">Winner 2</option>
+                          <option value="3">Winner 3</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Participation Status</label>

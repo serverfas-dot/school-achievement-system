@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Calendar, CheckSquare, Eye } from 'lucide-react';
+import { Calendar, CheckSquare, Eye } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import type { Database } from '../lib/database.types';
@@ -8,10 +8,12 @@ type Student = Database['public']['Tables']['students']['Row'];
 type ActivityCategory = Database['public']['Tables']['activity_categories']['Row'];
 type SubActivity = Database['public']['Tables']['sub_activities']['Row'];
 type AttendanceStatus = Database['public']['Tables']['attendance_records']['Row']['attendance_status'];
+type WinnerPosition = 1 | 2 | 3 | null;
 
 interface AttendanceRecord {
   studentId: string;
   status: AttendanceStatus;
+  winnerPosition: WinnerPosition;
   notes: string;
 }
 
@@ -26,7 +28,7 @@ interface SavedAttendanceRecord {
 }
 
 export function TeacherDashboard() {
-  const { signOut, userDetails, user } = useAuth();
+  const { userDetails, user } = useAuth();
   const [categories, setCategories] = useState<ActivityCategory[]>([]);
   const [subActivities, setSubActivities] = useState<SubActivity[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -76,6 +78,7 @@ export function TeacherDashboard() {
         newAttendance[student.id] = {
           studentId: student.id,
           status: 'present',
+          winnerPosition: null,
           notes: '',
         };
       });
@@ -113,12 +116,12 @@ export function TeacherDashboard() {
     }
   };
 
-  const handleAttendanceChange = (studentId: string, field: 'status' | 'notes', value: string) => {
+  const handleAttendanceChange = (studentId: string, field: 'status' | 'winnerPosition' | 'notes', value: string) => {
     setAttendance(prev => ({
       ...prev,
       [studentId]: {
         ...prev[studentId],
-        [field]: value,
+        [field]: field === 'winnerPosition' ? (value ? Number(value) as WinnerPosition : null) : value,
       },
     }));
   };
@@ -166,6 +169,7 @@ export function TeacherDashboard() {
           recorded_month: recordedMonth,
           recorded_year: recordedYear,
           notes: record.notes || null,
+          winner_position: record.winnerPosition,
         }));
 
       if (achievementRecords.length > 0) {
@@ -190,14 +194,6 @@ export function TeacherDashboard() {
 
   const gradeStudents = students.filter(s => s.grade === selectedGrade);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -214,18 +210,14 @@ export function TeacherDashboard() {
                 <p className="text-sm text-gray-600">{userDetails?.full_name}</p>
               </div>
             </div>
-            <button
-              onClick={signOut}
-              className="flex items-center space-x-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Sign Out</span>
-            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading && (
+          <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">Loading records...</div>
+        )}
         {(error || success) && (
           <div className={`mb-6 px-4 py-3 rounded-lg ${error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
             {error || success}
@@ -386,6 +378,7 @@ export function TeacherDashboard() {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Index Number</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Attendance Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Winner</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Notes</th>
                   </tr>
                 </thead>
@@ -408,6 +401,19 @@ export function TeacherDashboard() {
                         >
                           <option value="present">Present (P)</option>
                           <option value="absent">Absent (AB)</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          value={attendance[student.id]?.winnerPosition ?? ''}
+                          onChange={(e) => handleAttendanceChange(student.id, 'winnerPosition', e.target.value)}
+                          disabled={attendance[student.id]?.status !== 'present'}
+                          className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                        >
+                          <option value="">No winner</option>
+                          <option value="1">Winner 1</option>
+                          <option value="2">Winner 2</option>
+                          <option value="3">Winner 3</option>
                         </select>
                       </td>
                       <td className="px-4 py-3">
