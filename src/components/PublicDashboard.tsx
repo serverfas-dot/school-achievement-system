@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
 type Student = Database['public']['Tables']['students']['Row'];
+type PublicStudent = Pick<Student, 'id' | 'student_name' | 'index_number' | 'grade' | 'gender' | 'club' | 'house' | 'position' | 'attendance_percent' | 'activity_participation_percent' | 'two_activity_participation_percent' | 'profile_picture_url'>;
 
 interface AchievementEntry {
   id: string;
@@ -28,7 +29,7 @@ export function PublicDashboard() {
   const [searchBy, setSearchBy] = useState<'name' | 'index'>('index');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
-  const [student, setStudent] = useState<Student | null>(null);
+  const [student, setStudent] = useState<PublicStudent | null>(null);
   const [yearGroups, setYearGroups] = useState<YearGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -43,7 +44,9 @@ export function PublicDashboard() {
     setYearGroups([]);
 
     try {
-      const query = supabase.from('students').select('*');
+      const query = supabase
+        .from('students')
+        .select('id, student_name, index_number, grade, gender, club, house, position, attendance_percent, activity_participation_percent, two_activity_participation_percent, profile_picture_url');
 
       if (searchBy === 'name') {
         query.ilike('student_name', `%${searchTerm.trim()}%`);
@@ -334,16 +337,6 @@ export function PublicDashboard() {
                     <p className="text-lg font-semibold text-gray-900">{student.gender || 'N/A'}</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Date of Birth</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A'}
-                    </p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">ID Card No</p>
-                    <p className="text-lg font-semibold text-gray-900">{student.id_card_no || 'N/A'}</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-sm text-gray-600 mb-1">House</p>
                     <p className="text-lg font-semibold text-gray-900">{student.house || 'N/A'}</p>
                   </div>
@@ -378,14 +371,6 @@ export function PublicDashboard() {
                         style={{ width: `${student.two_activity_participation_percent || 0}%` }}
                       ></div>
                     </div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">
-                    <p className="text-sm text-gray-600 mb-1">Address</p>
-                    <p className="text-lg font-semibold text-gray-900">{student.address || 'N/A'}</p>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg md:col-span-2">
-                    <p className="text-sm text-gray-600 mb-1">Email</p>
-                    <p className="text-lg font-semibold text-gray-900">{student.mail_id || 'N/A'}</p>
                   </div>
                 </div>
               </div>

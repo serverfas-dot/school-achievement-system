@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { UserPlus, Users, Trash2, LogOut, Edit2 } from 'lucide-react';
+import { UserPlus, Users, Trash2, LogOut, Edit2, DatabaseBackup, Download, KeyRound, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import type { UserRole } from '../lib/database.types';
+import type { Database, UserRole } from '../lib/database.types';
 
 interface UserRoleData {
   id: string;
@@ -12,10 +12,16 @@ interface UserRoleData {
   roles: UserRole[];
 }
 
+type Backup = Pick<Database['public']['Tables']['system_backups']['Row'], 'id' | 'backup_type' | 'file_name' | 'created_at'>;
+
 export function SuperAdminDashboard() {
-  const { signOut, userDetails } = useAuth();
+  const { signOut, userDetails, user } = useAuth();
   const [users, setUsers] = useState<UserRoleData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backups, setBackups] = useState<Backup[]>([]);
+  const [backupSettings, setBackupSettings] = useState({ daily_enabled: true, monthly_enabled: true });
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [credentialForm, setCredentialForm] = useState({ targetUserId: '', email: '', password: '' });
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingRoles, setEditingRoles] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>([]);
@@ -63,9 +69,130 @@ export function SuperAdminDashboard() {
     setLoading(false);
   };
 
+  const loadBackups = async () => {
+    const [settingsResponse, backupsResponse] = await Promise.all([
+      supabase.from('backup_settings').select('daily_enabled, monthly_enabled').eq('id', 1).maybeSingle(),
+      supabase.from('system_backups').select('id, backup_type, file_name, created_at').order('created_at', { ascending: false }),
+    ]);
+
+    if (settingsResponse.data) {
+      setBackupSettings({
+        daily_enabled: settingsResponse.data.daily_enabled,
+        monthly_enabled: settingsResponse.data.monthly_enabled,
+      });
+    }
+    if (backupsResponse.data) setBackups(backupsResponse.data);
+  };
+
   useEffect(() => {
-    loadUsers();
+    void loadUsers();
+    void loadBackups();
   }, []);
+
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    try {
+      const { error: functionError } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'update_credentials',
+          targetUserId: credentialForm.targetUserId,
+          email: credentialForm.email,
+          password: credentialForm.password || undefined,
+        },
+      });
+
+      if (functionError) throw functionError;
+      setSuccess('Staff account credentials updated successfully.');
+      setCredentialForm({ targetUserId: '', email: '', password: '' });
+      await loadUsers();
+    } catch (err) {
+      console.error('Credential update failed:', err);
+      setError('Could not update the staff account. Please check the details and try again.');
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const { data, error: backupError } = await supabase.rpc('create_system_backup', { p_backup_type: 'manual' });
+      if (backupError || !data?.[0]) throw backupError || new Error('Backup could not be created');
+
+      const backup = data[0];
+      const blob = new Blob([JSON.stringify(backup.snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = backup.file_name;
+      link.click();
+      URL.revokeObjectURL(url);
+      setSuccess('Backup created and downloaded successfully.');
+      await loadBackups();
+    } catch (err) {
+      console.error('Backup creation failed:', err);
+      setError('Could not create the backup. Please try again.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleDownloadBackup = async (backup: Backup) => {
+    try {
+      const { data, error: backupError } = await supabase
+        .from('system_backups')
+        .select('snapshot')
+        .eq('id', backup.id)
+        .maybeSingle();
+      if (backupError || !data) throw backupError || new Error('Backup not found');
+
+      const blob = new Blob([JSON.stringify(data.snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = backup.file_name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Backup download failed:', err);
+      setError('Could not download that backup.');
+    }
+  };
+
+  const handleRestoreBackup = async (backup: Backup) => {
+    if (!confirm(`Restore ${backup.file_name}? Current student and activity data will be replaced.`)) return;
+
+    setBackupLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const { error: restoreError } = await supabase.rpc('restore_system_backup', { p_backup_id: backup.id });
+      if (restoreError) throw restoreError;
+      setSuccess('Backup restored successfully.');
+    } catch (err) {
+      console.error('Backup restore failed:', err);
+      setError('Could not restore that backup. No changes were made if the restore failed.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleSaveBackupSettings = async (field: 'daily_enabled' | 'monthly_enabled', value: boolean) => {
+    const nextSettings = { ...backupSettings, [field]: value };
+    setBackupSettings(nextSettings);
+    const { error: settingsError } = await supabase
+      .from('backup_settings')
+      .update({ ...nextSettings, updated_by: user?.id })
+      .eq('id', 1);
+    if (settingsError) {
+      setBackupSettings(backupSettings);
+      setError('Could not save backup schedule settings.');
+    }
+  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,46 +205,24 @@ export function SuperAdminDashboard() {
     }
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+      const { error: functionError } = await supabase.functions.invoke('admin-user-management', {
+        body: {
+          action: 'create_user',
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.full_name,
+          roles: formData.roles,
+        },
       });
 
-      if (authError) throw authError;
-
-      const createdUser = authData.user;
-      if (createdUser) {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            id: createdUser.id,
-            email: formData.email,
-            full_name: formData.full_name,
-            role: formData.roles[0],
-          });
-
-        if (roleError) throw roleError;
-
-        const currentUser = await supabase.auth.getUser();
-        const roleAssignments = formData.roles.map(role => ({
-          user_id: createdUser.id,
-          role,
-          assigned_by: currentUser.data.user?.id,
-        }));
-
-        const { error: assignError } = await supabase
-          .from('user_role_assignments')
-          .insert(roleAssignments);
-
-        if (assignError) throw assignError;
-
-        setSuccess('User created successfully!');
-        setFormData({ email: '', password: '', full_name: '', roles: ['teacher'] });
-        setShowAddUser(false);
-        loadUsers();
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to create user');
+      if (functionError) throw functionError;
+      setSuccess('User created successfully!');
+      setFormData({ email: '', password: '', full_name: '', roles: ['teacher'] });
+      setShowAddUser(false);
+      await loadUsers();
+    } catch (err) {
+      console.error('User creation failed:', err);
+      setError('Could not create the staff account. Please check the details and try again.');
     }
   };
 
@@ -447,6 +552,107 @@ export function SuperAdminDashboard() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-3">
+              <KeyRound className="w-6 h-6 text-blue-600" />
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Staff Account Access</h2>
+                <p className="text-sm text-gray-600">Change an admin or teacher email and password.</p>
+              </div>
+            </div>
+          </div>
+          <form onSubmit={handleUpdateCredentials} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Staff account</label>
+              <select
+                value={credentialForm.targetUserId}
+                onChange={(e) => {
+                  const selectedUser = users.find((item) => item.id === e.target.value);
+                  setCredentialForm({ targetUserId: e.target.value, email: selectedUser?.email || '', password: '' });
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                required
+              >
+                <option value="">Select account</option>
+                {users.filter((item) => item.roles.some((role) => role === 'admin' || role === 'teacher')).map((item) => (
+                  <option key={item.id} value={item.id}>{item.full_name} ({item.email})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email / username</label>
+              <input
+                type="email"
+                value={credentialForm.email}
+                onChange={(e) => setCredentialForm({ ...credentialForm, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+              <input
+                type="password"
+                value={credentialForm.password}
+                onChange={(e) => setCredentialForm({ ...credentialForm, password: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                minLength={8}
+                placeholder="Leave blank to keep current"
+              />
+            </div>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              Save Access
+            </button>
+          </form>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div className="flex items-center space-x-3">
+              <DatabaseBackup className="w-6 h-6 text-blue-600" />
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Backup and Restore</h2>
+                <p className="text-sm text-gray-600">Protect student and activity records with downloadable snapshots.</p>
+              </div>
+            </div>
+            <button onClick={handleCreateBackup} disabled={backupLoading} className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <DatabaseBackup className="w-4 h-4" />
+              <span>{backupLoading ? 'Working...' : 'Create Backup Now'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <label className="flex items-center justify-between border rounded-lg p-4">
+              <span><span className="block font-medium text-gray-900">Daily automatic backup</span><span className="text-sm text-gray-500">Runs every day at 02:00 UTC</span></span>
+              <input type="checkbox" checked={backupSettings.daily_enabled} onChange={(e) => handleSaveBackupSettings('daily_enabled', e.target.checked)} className="w-5 h-5" />
+            </label>
+            <label className="flex items-center justify-between border rounded-lg p-4">
+              <span><span className="block font-medium text-gray-900">Monthly automatic backup</span><span className="text-sm text-gray-500">Runs on the first day at 03:00 UTC</span></span>
+              <input type="checkbox" checked={backupSettings.monthly_enabled} onChange={(e) => handleSaveBackupSettings('monthly_enabled', e.target.checked)} className="w-5 h-5" />
+            </label>
+          </div>
+
+          {backups.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">No backups have been created yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {backups.map((backup) => (
+                <div key={backup.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border rounded-lg p-4">
+                  <div>
+                    <p className="font-medium text-gray-900">{backup.file_name}</p>
+                    <p className="text-sm text-gray-500">{backup.backup_type} · {new Date(backup.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleDownloadBackup(backup)} className="flex items-center gap-2 px-3 py-2 text-sm text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"><Download className="w-4 h-4" />Download</button>
+                    <button onClick={() => handleRestoreBackup(backup)} disabled={backupLoading} className="flex items-center gap-2 px-3 py-2 text-sm text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 disabled:opacity-50"><RefreshCw className="w-4 h-4" />Restore</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

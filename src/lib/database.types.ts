@@ -265,8 +265,68 @@ export interface Database {
           { foreignKeyName: 'attendance_records_sub_activity_id_fkey'; columns: ['sub_activity_id']; isOneToOne: false; referencedRelation: 'sub_activities'; referencedColumns: ['id'] },
         ];
       };
+      backup_settings: {
+        Row: {
+          id: number;
+          daily_enabled: boolean;
+          monthly_enabled: boolean;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          daily_enabled?: boolean;
+          monthly_enabled?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          daily_enabled?: boolean;
+          monthly_enabled?: boolean;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      system_backups: {
+        Row: {
+          id: string;
+          backup_type: 'manual' | 'daily' | 'monthly';
+          file_name: string;
+          snapshot: Record<string, unknown>;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          backup_type: 'manual' | 'daily' | 'monthly';
+          file_name: string;
+          snapshot: Record<string, unknown>;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          backup_type?: 'manual' | 'daily' | 'monthly';
+          file_name?: string;
+          snapshot?: Record<string, unknown>;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
-    Views: {};
-    Functions: {};
+    Views: Record<string, never>;
+    Functions: {
+      create_system_backup: {
+        Args: { p_backup_type?: 'manual' | 'daily' | 'monthly' };
+        Returns: { id: string; file_name: string; snapshot: Record<string, unknown> }[];
+      };
+      restore_system_backup: {
+        Args: { p_backup_id: string };
+        Returns: undefined;
+      };
+    };
   };
 }

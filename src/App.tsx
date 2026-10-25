@@ -50,6 +50,12 @@ function AppContent() {
               </option>
             ))}
           </select>
+          <button
+            onClick={() => void signOut()}
+            className="mt-3 w-full px-3 py-2 text-sm font-medium text-red-700 border border-red-200 rounded-lg hover:bg-red-50 transition"
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     );
