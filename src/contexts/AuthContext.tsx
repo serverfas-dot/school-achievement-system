@@ -123,8 +123,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUserDetails(null);
     localStorage.removeItem('selectedRole');
 
-    await supabase.auth.signOut({ scope: 'local' });
-    setLoading(false);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      for (const storage of [localStorage, sessionStorage]) {
+        for (const key of Object.keys(storage)) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            storage.removeItem(key);
+          }
+        }
+      }
+      setLoading(false);
+      window.location.replace(`${import.meta.env.BASE_URL}?login=true`);
+    }
   };
 
   const switchRole = (role: UserRole) => {
